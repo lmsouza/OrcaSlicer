@@ -110,7 +110,7 @@ msgid ""
 "the first %1% filaments will be available in painting tool."
 msgstr ""
 "O contador de filamento excede o número máximo suportado pela ferramenta de pintura."
-Apenas os primeiros %1% filamentos estarão disponíveis para a ferramenta de pintura."
+Apenas os primeiros %1% filamentos estarão disponíveis para pintura."
 
 msgid "Color Painting"
 msgstr "Pintura de cores"
