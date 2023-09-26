@@ -2,11 +2,11 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Orca Slicer\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-09-12 20:34+0800\n"
+"POT-Creation-Date: 2023-09-26 14:04+0800\n"
 "PO-Revision-Date: \n"
 "Last-Translator: \n"
 "Language-Team: \n"
-"Language: en\n"
+"Language: pt-br\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -14,194 +14,194 @@ msgstr ""
 "X-Generator: Poedit 3.3.2\n"
 
 msgid "Supports Painting"
-msgstr "Support Painting"
+msgstr "Pintura de Suporte"
 
 msgid "Alt + Mouse wheel"
-msgstr "Alt + Mouse wheel"
+msgstr "Alt + roda do mouse"
 
 msgid "Section view"
-msgstr "Section view"
+msgstr "Vista de corte"
 
 msgid "Reset direction"
-msgstr "Reset direction"
+msgstr "Resetar direção"
 
 msgid "Ctrl + Mouse wheel"
-msgstr "Ctrl + Mouse wheel"
+msgstr "Ctrl + roda do mouse"
 
 msgid "Pen size"
-msgstr "Pen size"
+msgstr "Tamanho do pincel"
 
 msgid "Left mouse button"
-msgstr "Left mouse button"
+msgstr "Botão esquerdo do mouse"
 
 msgid "Enforce supports"
-msgstr "Enforce supports"
+msgstr "Força criação de suporte"
 
 msgid "Right mouse button"
-msgstr "Right mouse button"
+msgstr "Botão direito do mouse"
 
 msgid "Block supports"
-msgstr "Block supports"
+msgstr "Bloquear suporte"
 
 msgid "Shift + Left mouse button"
-msgstr "Shift + Left mouse button"
+msgstr "Shift + Botão esquerdo do mouse"
 
 msgid "Erase"
-msgstr "Erase"
+msgstr "Apagar"
 
 msgid "Erase all painting"
-msgstr "Erase all painting"
+msgstr "Apagar tudo pintado"
 
 msgid "Highlight overhang areas"
-msgstr "Highlight overhangs"
+msgstr "Destacar overhangs"
 
 msgid "Gap fill"
-msgstr "Gap fill"
+msgstr "Preencher lacuna"
 
 msgid "Perform"
-msgstr "Apply"
+msgstr "Aplicar"
 
 msgid "Gap area"
-msgstr "Gap area"
+msgstr "Área de lacuna"
 
 msgid "Tool type"
-msgstr "Tool type"
+msgstr "Tipo de ferramenta"
 
 msgid "Smart fill angle"
-msgstr "Smart fill angle"
+msgstr "Preenchimento inteligente de ângulo"
 
 msgid "On overhangs only"
-msgstr "On overhangs only"
+msgstr "Apenas em overhangs"
 
 msgid "Auto support threshold angle: "
-msgstr "Auto support threshold angle: "
+msgstr "Ângulo limite de suporte automático: "
 
 msgid "Circle"
-msgstr "Circle"
+msgstr "Círculo"
 
 msgid "Sphere"
-msgstr "Sphere"
+msgstr "Esfera"
 
 msgid "Fill"
-msgstr "Fill"
+msgstr "Preenchimento"
 
 msgid "Gap Fill"
-msgstr "Gap Fill"
+msgstr "Preencher lacuna"
 
 #, boost-format
 msgid "Allows painting only on facets selected by: \"%1%\""
-msgstr "Allows painting only on facets selected by: \"%1%\""
+msgstr "Permite pintura apenas nas faces selecionadas por: \"%1%\""
 
 msgid "Highlight faces according to overhang angle."
-msgstr "Highlight faces according to overhang angle."
+msgstr "Destacar faces de acordo com o ângulo de overhang."
 
 msgid "No auto support"
-msgstr "No auto support"
+msgstr "Desliga suportes automáticos"
 
 msgid "Support Generated"
-msgstr "Support generated"
+msgstr "Suportes Gerados"
 
 msgid "Lay on face"
-msgstr "Lay on Face"
+msgstr "Lay on Face"*
 
 #, boost-format
 msgid ""
 "Filament count exceeds the maximum number that painting tool supports. only "
 "the first %1% filaments will be available in painting tool."
 msgstr ""
-"Filament count exceeds the maximum number that painting tool supports. Only "
-"the first %1% filaments will be available in painting tool."
+"O contador de filamento excede o número máximo suportado pela ferramenta de pintura."
+Apenas os primeiros %1% filamentos estarão disponíveis para a ferramenta de pintura."
 
 msgid "Color Painting"
-msgstr "Color painting"
+msgstr "Pintura de cores"
 
 msgid "Pen shape"
-msgstr "Pen shape"
+msgstr "Formato de pincel"
 
 msgid "Paint"
-msgstr "Paint"
+msgstr "Pintura"
 
 msgid "Key 1~9"
-msgstr "Key 1~9"
+msgstr "Tecla 1~9"
 
 msgid "Choose filament"
-msgstr "Choose filament"
+msgstr "Escolha o filamento"
 
 msgid "Edge detection"
-msgstr "Edge detection"
+msgstr "Detecção de aresta"
 
 msgid "Triangles"
-msgstr "Triangles"
+msgstr "Triângulos"
 
 msgid "Filaments"
-msgstr "Filaments"
+msgstr "Filamentos"
 
 msgid "Brush"
-msgstr "Brush"
+msgstr "Pincel"
 
 msgid "Smart fill"
-msgstr "Smart fill"
+msgstr "Preenchimento inteligente"
 
 msgid "Bucket fill"
 msgstr "Bucket fill"
 
 msgid "Height range"
-msgstr "Height range"
+msgstr "Faixa de altura"
 
 msgid "Ctrl + Shift + Enter"
 msgstr "Ctrl + Shift + Enter"
 
 msgid "Toggle Wireframe"
-msgstr "Toggle Wireframe"
+msgstr "Liga/Desliga Wireframe"
 
 msgid "Shortcut Key "
-msgstr "Shortcut Key "
+msgstr "Tecla de atalho"
 
 msgid "Triangle"
-msgstr "Triangle"
+msgstr "Triângulo"
 
 msgid "Height Range"
-msgstr "Height Range"
+msgstr "Faixa de altura"
 
 msgid "Remove painted color"
-msgstr "Remove painted color"
+msgstr "Remove cores pintadas"
 
 #, boost-format
 msgid "Painted using: Filament %1%"
-msgstr "Painted using: Filament %1%"
+msgstr "Pintar usando: filamento %1%"
 
 msgid "Move"
-msgstr "Move"
+msgstr "Mover"
 
 msgid "Rotate"
-msgstr "Rotate"
+msgstr "Rotacionar"
 
 msgid "Optimize orientation"
-msgstr "Optimize orientation"
+msgstr "Orientação otimizada"
 
 msgid "Apply"
-msgstr "Apply"
+msgstr "Aplicar"
 
 msgid "Scale"
-msgstr "Scale"
+msgstr "Escala"
 
 msgid "Error: Please close all toolbar menus first"
-msgstr "Error: Please close all toolbar menus first"
+msgstr "Erro: feche todos os menus da barra de ferramenta"
 
 msgid "Tool-Lay on Face"
-msgstr "Tool-Lay on Face"
+msgstr "Tool-Lay on Face" *
 
 msgid "in"
-msgstr "in"
+msgstr "pol"
 
 msgid "mm"
 msgstr "mm"
 
 msgid "Position"
-msgstr "Position"
+msgstr "Posição"
 
 msgid "Rotation"
-msgstr "Rotation"
+msgstr "Rotação"
 
 msgid "Scale ratios"
 msgstr "Scale ratios"
