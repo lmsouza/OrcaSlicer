@@ -102,7 +102,7 @@ msgid "Support Generated"
 msgstr "Suportes Gerados"
 
 msgid "Lay on face"
-msgstr "Lay on Face"*
+msgstr "Lay on Face *"
 
 #, boost-format
 msgid ""
@@ -189,7 +189,7 @@ msgid "Error: Please close all toolbar menus first"
 msgstr "Erro: feche todos os menus da barra de ferramenta"
 
 msgid "Tool-Lay on Face"
-msgstr "Tool-Lay on Face" *
+msgstr "Tool-Lay on Face *"
 
 msgid "in"
 msgstr "pol"
@@ -204,200 +204,201 @@ msgid "Rotation"
 msgstr "Rotação"
 
 msgid "Scale ratios"
-msgstr "Scale ratios"
+msgstr "Fatores de escala"
 
 msgid "Object Operations"
-msgstr "Object operations"
+msgstr "Operações de Objeto"
 
 msgid "Volume Operations"
-msgstr "Volume operations"
+msgstr "Operações de Volume"
 
 msgid "Translate"
-msgstr "Translate"
+msgstr "Translate *"
 
 msgid "Group Operations"
-msgstr "Group operations"
+msgstr "Operações de Grupo"
 
 msgid "Set Position"
-msgstr "Set position"
+msgstr "Definir Posição"
 
 msgid "Set Orientation"
-msgstr "Set orientation"
+msgstr "Definir Orientação"
 
 msgid "Set Scale"
-msgstr "Set scale"
+msgstr "Definir Escala"
 
 msgid "Reset Position"
-msgstr "Reset position"
+msgstr "Redefinir Posição"
 
 msgid "Reset Rotation"
-msgstr "Reset rotation"
+msgstr "Redefinir Rotação"
 
 msgid "World coordinates"
-msgstr "World coordinates"
+msgstr "Coordenadas mundiais"
 
 msgid "°"
 msgstr "°"
 
 msgid "Size"
-msgstr "Size"
+msgstr "Tamanho"
 
 msgid "%"
 msgstr "%"
 
 msgid "uniform scale"
-msgstr "Uniform scale"
+msgstr "escalar uniforme"
 
 msgid "Left click"
-msgstr "Left click"
+msgstr "Botão esquerdo"
 
 msgid "Add connector"
-msgstr "Add connector"
+msgstr "Adicionar conector"
 
 msgid "Right click"
-msgstr "Right click"
+msgstr "Botão direito"
 
 msgid "Remove connector"
-msgstr "Remove connector"
+msgstr "Remover conector"
 
 msgid "Drag"
-msgstr "Drag"
+msgstr "Arrastar"
 
 msgid "Move connector"
-msgstr "Move connector"
+msgstr "Mover conector"
 
 msgid "Add connector to selection"
-msgstr "Add connector to selection"
+msgstr "Adicionar conector à seleção"
 
 msgid "Remove connector from selection"
-msgstr "Remove connector from selection"
+msgstr "Remover conector da selection"
 
 msgid "Select all connectors"
-msgstr "Select all connectors"
+msgstr "Selecionar todos os conectores"
 
 msgid "Cut"
-msgstr "Cut"
+msgstr "Cortar"
 
 msgid "Connector"
-msgstr "Connector"
+msgstr "Conector"
 
 msgid "Movement:"
-msgstr "Movement:"
+msgstr "Movimentação:"
 
 msgid "Movement"
-msgstr "Movement"
+msgstr "Movimentação"
 
 msgid "Height"
-msgstr "Height"
+msgstr "Altura"
 
 msgid "Edit connectors"
-msgstr "Edit connectors"
+msgstr "Editar conectores"
 
 msgid "Add connectors"
-msgstr "Add connectors"
+msgstr "Adicionar connectores"
 
 msgid "Upper part"
-msgstr "Upper part"
+msgstr "Parte superior"
 
 msgid "Lower part"
-msgstr "Lower part"
+msgstr "Parte inferior"
 
 msgid "Keep"
-msgstr "Keep"
+msgstr "Manter"
 
 msgid "Place on cut"
-msgstr "Place on cut"
+msgstr "Posicionar ao cortar"
 
 msgid "Flip"
-msgstr "Flip"
+msgstr "Virar"
 
 msgid "After cut"
-msgstr "After cut"
+msgstr "Após cortar"
 
 msgid "Cut to parts"
-msgstr "Cut to parts"
+msgstr "Cortar em partes"
 
 msgid "Auto Segment"
-msgstr "Auto Segment"
+msgstr "Segmento automático"
 
 msgid "Perform cut"
-msgstr "Perform cut"
+msgstr "Executar corte"
 
 msgid "Reset"
-msgstr "Reset"
+msgstr "Redefinir"
 
 msgid "Connectors"
-msgstr "Connectors"
+msgstr "Conectores"
 
 msgid "Type"
-msgstr "Type"
+msgstr "Tipo"
 
 msgid "Style"
-msgstr "Style"
+msgstr "Estilo"
 
 msgid "Shape"
-msgstr "Shape"
+msgstr "Forma"
 
 msgid "Depth ratio"
-msgstr "Depth ratio"
+msgstr "Depth ratio *"
 
 msgid "Remove connectors"
-msgstr "Remove connectors"
+msgstr "Remover conectores"
 
 msgid "Prizm"
-msgstr "Prizm"
+msgstr "Prisma"
 
 msgid "Frustum"
-msgstr "Frustum"
+msgstr "Fatiar"
 
 msgid "Square"
-msgstr "Square"
+msgstr "Quadrado"
 
 msgid "Hexagon"
-msgstr "Hexagon"
+msgstr "Hexágono"
 
 msgid "Confirm connectors"
-msgstr "Confirm connectors"
+msgstr "Confirmar connectores"
 
 msgid "Cancel"
-msgstr "Cancel"
+msgstr "Cancelar"
 
 msgid "Warning"
-msgstr "Warning"
+msgstr "Atenção"
 
 msgid "Invalid connectors detected"
-msgstr "Invalid connectors detected"
+msgstr "Conectores inválidos detectados"
 
 msgid "connector is out of cut contour"
-msgstr "connector is out of cut contour"
+msgstr "o conector está fora do contorno de corte"
 
 msgid "connectors are out of cut contour"
-msgstr "connectors are out of cut contour"
+msgstr "os conectores estão fora do contorno de corte"
 
 msgid "connector is out of object"
-msgstr "connector is out of object"
+msgstr "o conector está fora do objeto"
 
 msgid "connectors is out of object"
-msgstr "Connectors must be on object surface."
+msgstr "Os conectores precisam estar na superfície do objeto."
+
 
 msgid "Some connectors are overlapped"
-msgstr "Some connectors are overlapped"
+msgstr "Há conectores sobrepostos"
 
 msgid ""
-"Invalid state. \n"
-"No one part is selected for keep after cut"
+"Estado inválido. \n"
+"Nenhuma parte selecionada para ser mantida"
 msgstr ""
-"Invalid state. \n"
-"No one part is selected to keep after cut"
+"Estado inválido. \n"
+"Nenhuma parte selecionada para ser mantida"
 
 msgid "Plug"
-msgstr "Plug"
+msgstr "Plugue"
 
 msgid "Dowel"
-msgstr "Dowel"
+msgstr "Cavilha"
 
 msgid "Tolerance"
-msgstr "Tolerance"
+msgstr "Tolerância"
 
 msgid "Mesh name"
 msgstr "Mesh name"
