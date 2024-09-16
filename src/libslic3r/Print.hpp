@@ -1,6 +1,8 @@
 #ifndef slic3r_Print_hpp_
 #define slic3r_Print_hpp_
 
+#include "Fill/FillAdaptive.hpp"
+#include "Fill/FillLightning.hpp"
 #include "PrintBase.hpp"
 
 #include "BoundingBox.hpp"
@@ -36,6 +38,7 @@ class SupportLayer;
 class TreeSupportData;
 class TreeSupport;
 
+#define MAX_OUTER_NOZZLE_DIAMETER   4
 // BBS: move from PrintObjectSlice.cpp
 struct VolumeSlices
 {
@@ -90,8 +93,8 @@ enum PrintObjectStep {
     posSlice, posPerimeters,posEstimateCurledExtrusions, posPrepareInfill,
     posInfill, posIroning, posSupportMaterial, posSimplifyPath, posSimplifySupportPath,
     // BBS
-    posSimplifyInfill,
     posDetectOverhangsForLift,
+    posSimplifyWall, posSimplifyInfill,
     posCount,
 };
 
@@ -202,6 +205,8 @@ struct PrintInstance
     // 
     // instance id
     size_t               id;
+    // Orca: unique id used by marlin/rrf cancel object feature
+    size_t               unique_id;
 
     //BBS: instance_shift is too large because of multi-plate, apply without plate offset.
     Point shift_without_plate_offset() const;
@@ -327,6 +332,7 @@ public:
     // Height is used for slicing, for sorting the objects by height for sequential printing and for checking vertical clearence in sequential print mode.
     // The height is snug.
     coord_t 				     height() const         { return m_size.z(); }
+    double                      max_z() const         { return m_max_z; }
     // Centering offset of the sliced mesh from the scaled and rotated mesh of the model.
     const Point& 			     center_offset() const  { return m_center_offset; }
 
@@ -394,7 +400,8 @@ public:
     // The slicing parameters are dependent on various configuration values
     // (layer height, first layer height, raft settings, print nozzle diameter etc).
     const SlicingParameters&    slicing_parameters() const { return m_slicing_params; }
-    static SlicingParameters    slicing_parameters(const DynamicPrintConfig &full_config, const ModelObject &model_object, float object_max_z);
+    // Orca: XYZ shrinkage compensation has introduced the const Vec3d &object_shrinkage_compensation parameter to the function below
+    static SlicingParameters    slicing_parameters(const DynamicPrintConfig &full_config, const ModelObject &model_object, float object_max_z, const Vec3d &object_shrinkage_compensation);
 
     size_t                      num_printing_regions() const throw() { return m_shared_regions->all_regions.size(); }
     const PrintRegion&          printing_region(size_t idx) const throw() { return *m_shared_regions->all_regions[idx].get(); }
@@ -434,6 +441,9 @@ public:
 
     // BBS: Boundingbox of the first layer
     BoundingBox                 firstLayerObjectBrimBoundingBox;
+
+    // BBS: returns 1-based indices of extruders used to print the first layer wall of objects
+    std::vector<int>            object_first_layer_wall_extruders;
 
     // SoftFever
     size_t get_id() const { return m_id; }
@@ -478,6 +488,8 @@ private:
     void detect_overhangs_for_lift();
     void clear_overhangs_for_lift();
 
+   void _transform_hole_to_polyholes();
+
     // Has any support (not counting the raft).
     void detect_surfaces_type();
     void process_external_surfaces();
@@ -487,7 +499,8 @@ private:
     void discover_horizontal_shells();
     void combine_infill();
     void _generate_support_material();
-    std::pair<FillAdaptive::OctreePtr, FillAdaptive::OctreePtr> prepare_adaptive_infill_data();
+    std::pair<FillAdaptive::OctreePtr, FillAdaptive::OctreePtr> prepare_adaptive_infill_data(
+        const std::vector<std::pair<const Surface*, float>>& surfaces_w_bottom_z) const;
     FillLightning::GeneratorPtr prepare_lightning_infill_data();
 
     // BBS
@@ -495,6 +508,7 @@ private:
 
     // XYZ in scaled coordinates
     Vec3crd									m_size;
+    double                                  m_max_z;
     PrintObjectConfig                       m_config;
     // Translation in Z + Rotation + Scaling / Mirroring.
     Transform3d                             m_trafo = Transform3d::Identity();
@@ -517,8 +531,13 @@ private:
     // this is set to true when LayerRegion->slices is split in top/internal/bottom
     // so that next call to make_perimeters() performs a union() before computing loops
     bool                    				m_typed_slices = false;
+
+    std::pair<FillAdaptive::OctreePtr, FillAdaptive::OctreePtr> m_adaptive_fill_octrees;
+    FillLightning::GeneratorPtr m_lightning_generator;
+
     std::vector < VolumeSlices >            firstLayerObjSliceByVolume;
     std::vector<groupedVolumeSlices>        firstLayerObjSliceByGroups;
+
     // BBS: per object skirt
     ExtrusionEntityCollection               m_skirt;
 
@@ -581,8 +600,6 @@ struct FakeWipeTower
 
     std::vector<ExtrusionPaths> getFakeExtrusionPathsFromWipeTower() const
     {
-        float h         = height;
-        float lh        = layer_height;
         int   d         = scale_(depth);
         int   w         = scale_(width);
         int   bd        = scale_(brim_width);
@@ -590,13 +607,13 @@ struct FakeWipeTower
         Point maxCorner = {minCorner.x() + w, minCorner.y() + d};
 
         std::vector<ExtrusionPaths> paths;
-        for (float hh = 0.f; hh < h; hh += lh) {
-            ExtrusionPath path(ExtrusionRole::erWipeTower, 0.0, 0.0, lh);
+        for (float h = 0.f; h < height; h += layer_height) {
+            ExtrusionPath path(ExtrusionRole::erWipeTower, 0.0, 0.0, layer_height);
             path.polyline = {minCorner, {maxCorner.x(), minCorner.y()}, maxCorner, {minCorner.x(), maxCorner.y()}, minCorner};
             paths.push_back({path});
 
-            if (hh == 0.f) { // add brim
-                ExtrusionPath fakeBrim(ExtrusionRole::erBrim, 0.0, 0.0, lh);
+            if (h == 0.f) { // add brim
+                ExtrusionPath fakeBrim(ExtrusionRole::erBrim, 0.0, 0.0, layer_height);
                 Point         wtbminCorner = {minCorner - Point{bd, bd}};
                 Point         wtbmaxCorner = {maxCorner + Point{bd, bd}};
                 fakeBrim.polyline          = {wtbminCorner, {wtbmaxCorner.x(), wtbminCorner.y()}, wtbmaxCorner, {wtbminCorner.x(), wtbmaxCorner.y()}, wtbminCorner};
@@ -733,6 +750,7 @@ struct PrintStatistics
     double                          total_weight;
     double                          total_wipe_tower_cost;
     double                          total_wipe_tower_filament;
+    unsigned int                    initial_tool;
     std::map<size_t, double>        filament_stats;
 
     // Config with the filled in print statistics.
@@ -750,8 +768,26 @@ struct PrintStatistics
         total_weight           = 0.;
         total_wipe_tower_cost  = 0.;
         total_wipe_tower_filament = 0.;
+        initial_tool           = 0;
         filament_stats.clear();
     }
+    static const std::string FilamentUsedG;
+    static const std::string FilamentUsedGMask;
+    static const std::string TotalFilamentUsedG;
+    static const std::string TotalFilamentUsedGMask;
+    static const std::string TotalFilamentUsedGValueMask;
+    static const std::string FilamentUsedCm3;
+    static const std::string FilamentUsedCm3Mask;
+    static const std::string FilamentUsedMm;
+    static const std::string FilamentUsedMmMask;
+    static const std::string FilamentCost;
+    static const std::string FilamentCostMask;
+    static const std::string TotalFilamentCost;
+    static const std::string TotalFilamentCostMask;
+    static const std::string TotalFilamentCostValueMask;
+    static const std::string TotalFilamentUsedWipeTower;
+    static const std::string TotalFilamentUsedWipeTowerValueMask;
+    
 };
 
 typedef std::vector<PrintObject*>       PrintObjectPtrs;
@@ -770,6 +806,12 @@ class ConstPrintRegionPtrsAdaptor : public ConstVectorOfPtrsAdaptor<PrintRegion>
 };
 */
 
+enum FilamentTempType {
+    HighTemp=0,
+    LowTemp,
+    HighLowCompatible,
+    Undefine
+};
 // The complete print tray with possibly multiple objects.
 class Print : public PrintBaseWithState<PrintStep, psCount>
 {
@@ -796,7 +838,7 @@ public:
 
     ApplyStatus         apply(const Model &model, DynamicPrintConfig config) override;
 
-    void                process(bool use_cache = false) override;
+    void                process(long long *time_cost_with_cache = nullptr, bool use_cache = false) override;
     // Exports G-code into a file name based on the path_template, returns the file path of the generated G-code file.
     // If preview_data is not null, the preview_data is filled in for the G-code visualization (not used by the command line Slic3r).
     std::string         export_gcode(const std::string& path_template, GCodeProcessorResult* result, ThumbnailsGeneratorCallback thumbnail_cb = nullptr);
@@ -878,6 +920,9 @@ public:
 
 	std::string                 output_filename(const std::string &filename_base = std::string()) const override;
 
+	std::string                 get_model_name() const;
+	std::string                 get_plate_number_formatted() const;
+
     size_t                      num_print_regions() const throw() { return m_print_regions.size(); }
     const PrintRegion&          get_print_region(size_t idx) const  { return *m_print_regions[idx]; }
     const ToolOrdering&         get_tool_ordering() const { return m_wipe_tower_data.tool_ordering; }
@@ -920,10 +965,32 @@ public:
     Vec2d translate_to_print_space(const Vec2d &point) const;
     // scaled point
     Vec2d translate_to_print_space(const Point &point) const;
-
+    static FilamentTempType get_filament_temp_type(const std::string& filament_type);
+    static int get_hrc_by_nozzle_type(const NozzleType& type);
     static bool check_multi_filaments_compatibility(const std::vector<std::string>& filament_types);
+    // similar to check_multi_filaments_compatibility, but the input is int, and may be negative (means unset)
+    static bool is_filaments_compatible(const std::vector<int>& types);
+    // get the compatible filament type of a multi-material object
+    // Rule:
+    // 1. LowTemp+HighLowCompatible=LowTemp
+    // 2. HighTemp++HighLowCompatible=HighTemp
+    // 3. LowTemp+HighTemp+...=HighLowCompatible
+    // Unset types are just ignored.
+    static int get_compatible_filament_type(const std::set<int>& types);
 
-  protected:
+    bool is_all_objects_are_short() const {
+        return std::all_of(this->objects().begin(), this->objects().end(), [&](PrintObject* obj) { return obj->height() < scale_(this->config().nozzle_height.value); });
+    }
+    
+    // Orca: Implement prusa's filament shrink compensation approach
+    // Returns if all used filaments have same shrinkage compensations.
+     bool has_same_shrinkage_compensations() const;
+    // Returns scaling for each axis representing shrinkage compensations in each axis.
+     Vec3d shrinkage_compensation() const;
+
+    std::tuple<float, float> object_skirt_offset(double margin_height = 0) const;
+
+protected:
     // Invalidates the step, and its depending steps in Print.
     bool                invalidate_step(PrintStep step);
 
@@ -988,7 +1055,8 @@ private:
 
 public:
     //BBS: this was a print config and now seems to be useless so we move it to here
-    static float min_skirt_length;
+    // ORCA: parameter below is now back to being a user option (min_skirt_length)
+    //static float min_skirt_length;
 };
 
 

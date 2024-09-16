@@ -198,6 +198,10 @@ void change_opt_value(DynamicPrintConfig& config, const t_config_option_key& opt
 				config.option<ConfigOptionEnumsGeneric>(opt_key)->set_at(vec_new, opt_index, 0);
 			}
 			break;
+		case coPoint:{
+			config.set_key_value(opt_key, new ConfigOptionPoint(boost::any_cast<Vec2d>(value)));
+			}
+			break;
 		case coPoints:{
 			if (opt_key == "printable_area" || opt_key == "bed_exclude_area" || opt_key == "thumbnails") {
 				config.option<ConfigOptionPoints>(opt_key)->values = boost::any_cast<std::vector<Vec2d>>(value);
@@ -543,7 +547,7 @@ void desktop_open_datadir_folder()
 #endif
 }
 
-void desktop_open_any_folder( const std::string path )
+void desktop_open_any_folder( const std::string& path )
 {
     // Execute command to open a file explorer, platform dependent.
     // FIXME: The const_casts aren't needed in wxWidgets 3.1, remove them when we upgrade.
@@ -554,7 +558,14 @@ void desktop_open_any_folder( const std::string path )
 #elif __APPLE__
     openFolderForFile(from_u8(path));
 #else
-    const char *argv[] = {"xdg-open", path.data(), nullptr};
+
+    // Orca#6449: Open containing dir instead of opening the file directly.
+    std::string new_path = path;
+    boost::filesystem::path p(new_path);
+    if (!fs::is_directory(p)) {
+        new_path = p.parent_path().string();
+    }
+    const char* argv[] = {"xdg-open", new_path.data(), nullptr};
 
     // Check if we're running in an AppImage container, if so, we need to remove AppImage's env vars,
     // because they may mess up the environment expected by the file manager.

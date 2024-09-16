@@ -1,7 +1,3 @@
-///|/ Copyright (c) Prusa Research 2023 Vojtěch Bubník @bubnikv, Pavel Mikuš @Godrak
-///|/
-///|/ PrusaSlicer is released under the terms of the AGPLv3 or higher
-///|/
 #include "../ClipperUtils.hpp"
 // #include "../ClipperZUtils.hpp"
 #include "../ExtrusionEntityCollection.hpp"
@@ -11,9 +7,11 @@
 #include "../MutablePolygon.hpp"
 #include "../Geometry.hpp"
 #include "../Point.hpp"
+#include "clipper/clipper_z.hpp"
 
 #include <cmath>
 #include <boost/container/static_vector.hpp>
+#include <boost/log/trivial.hpp>
 
 #include <tbb/parallel_for.h>
 

@@ -119,9 +119,9 @@ public:
                 for(; j < placers.size() && !was_packed && !cancelled(); j++) {
                     result = placers[j].pack(*it, rem(it, store_));
                     score = result.score();
-                    score_all_plates = std::accumulate(placers.begin(), placers.begin() + j, score,
-                        [](double sum, const Placer& elem) { return sum + elem.score(); });
-                    if (this->unfitindicator_) this->unfitindicator_(it->get().name + " bed_id="+std::to_string(j) + ",score=" + std::to_string(score));
+                    score_all_plates = score;
+                    for (int i = 0; i < placers.size(); i++) { score_all_plates += placers[i].score();}
+                    if (this->unfitindicator_) this->unfitindicator_(it->get().name + " bed_id="+std::to_string(j) + ",score=" + std::to_string(score)+", score_all_plates="+std::to_string(score_all_plates));
 
                     if(score >= 0 && score < LARGE_COST_TO_REJECT) {
                         if (bed_id_firstfit == -1) {
@@ -159,6 +159,25 @@ public:
                     it->get().itemId(item_id++);
                     placers[j].accept(result_best);
                     makeProgress(placers[j], j);
+                }
+
+                if (was_packed && it->get().has_tried_with_excluded) {
+                    placers[j].clearItems([](const Item &itm) { return itm.isFixed() && !itm.is_wipe_tower; });
+                    if (fixed_bins.size() >= placers.size())
+                        placers[j].preload(fixed_bins[placers.size() - 1]);
+                }
+                bool placer_not_packed = !was_packed && !placers.empty() && j == placers.size() && placers[j - 1].getPackedSize() == 0; // large item is not placed into the bin
+                if (placer_not_packed) {
+                    if (it->get().has_tried_with_excluded == false) {
+                        it->get().has_tried_with_excluded = true;
+                        placers[j - 1].clearItems([](const Item &itm) { return itm.isFixed()&&!itm.is_wipe_tower; });
+                        placers[j - 1].preload(pconfig.m_excluded_items);
+                        j = j - 1;
+                        continue;
+                    } else {
+                        placers[j - 1].clearItems([](const Item &itm) { return itm.isFixed() && !itm.is_wipe_tower; });
+                        placers[j - 1].preload(fixed_bins[placers.size() - 1]);
+                    }
                 }
 
                 if(!was_packed){

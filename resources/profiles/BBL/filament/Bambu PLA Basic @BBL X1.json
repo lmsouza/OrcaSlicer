@@ -1,12 +1,18 @@
 {
     "type": "filament",
-    "setting_id": "GFSA04",
     "name": "Bambu PLA Basic @BBL X1",
-    "from": "system",
-    "instantiation": "true",
     "inherits": "Bambu PLA Basic @base",
+    "from": "system",
+    "setting_id": "GFSA04",
+    "instantiation": "true",
     "filament_max_volumetric_speed": [
         "21"
+    ],
+    "filament_long_retractions_when_cut": [
+        "1"
+    ],
+    "filament_retraction_distances_when_cut": [
+        "18"
     ],
     "slow_down_layer_time": [
         "8"
@@ -15,6 +21,5 @@
         "Bambu Lab X1 0.4 nozzle",
         "Bambu Lab X1 0.6 nozzle",
         "Bambu Lab X1 0.8 nozzle"
-    ],
-    "version": "01.07.00.18"
+    ]
 }

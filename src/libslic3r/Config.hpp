@@ -301,7 +301,7 @@ template <class T>
 class ConfigOptionSingle : public ConfigOption {
 public:
     T value;
-    explicit ConfigOptionSingle(T value) : value(value) {}
+    explicit ConfigOptionSingle(T value) : value(std::move(value)) {}
     operator T() const { return this->value; }
 
     void set(const ConfigOption *rhs) override
@@ -534,23 +534,26 @@ public:
     		}
     		return false;
     	}
-    	size_t i = 0;
+
     	size_t cnt = std::min(this->size(), rhs_vec->size());
-    	bool   modified = false;
-    	for (; i < cnt; ++ i)
-    		if (! rhs_vec->is_nil(i) && this->values[i] != rhs_vec->values[i]) {
-    			this->values[i] = rhs_vec->values[i];
-    			modified = true;
-    		}
-    	for (; i < rhs_vec->size(); ++ i)
-    		if (! rhs_vec->is_nil(i)) {
-    			if (this->values.empty())
-    				this->values.resize(i + 1);
-    			else
-    				this->values.resize(i + 1, this->values.front());
-    			this->values[i] = rhs_vec->values[i];
-    			modified = true;
-    		}
+        if (cnt < 1)
+            return false;
+
+        if (this->values.empty())
+            this->values.resize(rhs_vec->size());
+        else
+            this->values.resize(rhs_vec->size(), this->values.front());
+
+    	bool modified = false;
+        auto default_value = this->values[0];
+        for (size_t i = 0; i < rhs_vec->size(); ++i) {
+            if (!rhs_vec->is_nil(i)) {
+                this->values[i] = rhs_vec->values[i];
+                modified        = true;
+            } else {
+                this->values[i] = default_value;
+            }
+        }
         return modified;
     }
 
@@ -855,8 +858,8 @@ using ConfigOptionIntsNullable = ConfigOptionIntsTempl<true>;
 class ConfigOptionString : public ConfigOptionSingle<std::string>
 {
 public:
-    ConfigOptionString() : ConfigOptionSingle<std::string>("") {}
-    explicit ConfigOptionString(const std::string &value) : ConfigOptionSingle<std::string>(value) {}
+    ConfigOptionString() : ConfigOptionSingle<std::string>(std::string{}) {}
+    explicit ConfigOptionString(std::string value) : ConfigOptionSingle<std::string>(std::move(value)) {}
 
     static ConfigOptionType static_type() { return coString; }
     ConfigOptionType        type()  const override { return static_type(); }
@@ -1660,7 +1663,7 @@ public:
     ConfigOptionEnumsGenericTempl& operator= (const ConfigOption* opt) { this->set(opt); return *this; }
     bool                        operator< (const ConfigOptionInts& rhs) const throw() { return this->values < rhs.values; }
 
-    bool                        operator==(const ConfigOptionInts& rhs) const throw()
+    bool                        operator==(const ConfigOptionInts& rhs) const
     {
         if (rhs.type() != this->type())
             throw ConfigurationError("ConfigOptionEnumsGeneric: Comparing incompatible types");
@@ -1782,6 +1785,8 @@ public:
     ConfigOption*						create_empty_option() const;
     // Create a default option to be inserted into a DynamicConfig.
     ConfigOption*						create_default_option() const;
+
+    bool                                is_scalar()     const { return (int(this->type) & int(coVectorType)) == 0; }
 
     template<class Archive> ConfigOption* load_option_from_archive(Archive &archive) const {
     	if (this->nullable) {
@@ -1970,6 +1975,7 @@ public:
             out.push_back(kvp.first);
         return out;
     }
+    bool                    empty() { return options.empty(); }
 
     // Iterate through all of the CLI options and write them to a stream.
     std::ostream&           print_cli_help(
@@ -2051,6 +2057,10 @@ protected:
     // If the opt_key is no more valid in this version of Slic3r, opt_key is cleared by handle_legacy().
     // handle_legacy() is called internally by set_deserialize().
     virtual void                    handle_legacy(t_config_option_key &/*opt_key*/, std::string &/*value*/) const {}
+    // Called after a config is loaded as a whole.
+    // Perform composite conversions, for example merging multiple keys into one key.
+    // For conversion of single options, the handle_legacy() method above is called.
+    virtual void                    handle_legacy_composite() {}
 
 public:
 	using ConfigOptionResolver::option;

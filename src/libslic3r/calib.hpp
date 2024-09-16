@@ -34,6 +34,11 @@ struct Calib_Params
     CalibMode mode;
 };
 
+enum FlowRatioCalibrationType {
+    COMPLETE_CALIBRATION = 0,
+    FINE_CALIBRATION,
+};
+
 class X1CCalibInfos
 {
 public:
@@ -78,6 +83,7 @@ struct PrinterCaliInfo
     bool                        cali_finished = true;
     float                       cache_flow_ratio;
     std::vector<CaliPresetInfo> selected_presets;
+    FlowRatioCalibrationType    cache_flow_rate_calibration_type = FlowRatioCalibrationType::COMPLETE_CALIBRATION;
 };
 
 class PACalibResult
@@ -145,7 +151,7 @@ protected:
 
     void delta_scale_bed_ext(BoundingBoxf &bed_ext) const { bed_ext.scale(1.0f / 1.41421f); }
 
-    std::string move_to(Vec2d pt, GCodeWriter &writer, std::string comment = std::string());
+    std::string move_to(Vec2d pt, GCodeWriter &writer, std::string comment = std::string(), double z = 0, double layer_height = -1);
     double e_per_mm(double line_width, double layer_height, float nozzle_diameter, float filament_diameter, float print_flow_ratio) const;
     double speed_adjust(int speed) const { return speed * 60; };
 
@@ -187,7 +193,7 @@ protected:
 class CalibPressureAdvanceLine : public CalibPressureAdvance
 {
 public:
-    CalibPressureAdvanceLine(GCode *gcodegen) : CalibPressureAdvance(gcodegen->config()), mp_gcodegen(gcodegen),m_nozzle_diameter(gcodegen->config().nozzle_diameter.get_at(0)){};
+    CalibPressureAdvanceLine(GCode* gcodegen);
     ~CalibPressureAdvanceLine(){};
 
     std::string generate_test(double start_pa = 0, double step_pa = 0.002, int count = 50);
@@ -199,6 +205,7 @@ public:
     }
 
     const double &line_width() { return m_line_width; };
+    const double &height_layer() { return m_height_layer; };
     bool          is_delta() const;
     bool         &draw_numbers() { return m_draw_numbers; }
 
@@ -212,10 +219,10 @@ private:
     double m_nozzle_diameter;
     double m_slow_speed, m_fast_speed;
 
-    const double m_height_layer{0.2};
-    const double m_line_width{0.6};
-    const double m_thin_line_width{0.44};
-    const double m_number_line_width{0.48};
+    double m_height_layer{0.2};
+    double m_line_width{0.6};
+    double m_thin_line_width{0.44};
+    double m_number_line_width{0.48};
     const double m_space_y{3.5};
 
     double m_length_short{20.0}, m_length_long{40.0};
@@ -251,6 +258,9 @@ public:
 
     void generate_custom_gcodes(const DynamicPrintConfig &config, bool is_bbl_machine, Model &model, const Vec3d &origin);
 
+    void set_start_offset(const Vec3d &offset);
+    Vec3d get_start_offset();
+
 protected:
     double speed_first_layer() const { return m_config.option<ConfigOptionFloat>("initial_layer_speed")->value; };
     double speed_perimeter() const { return m_config.option<ConfigOptionFloat>("outer_wall_speed")->value; };
@@ -264,6 +274,7 @@ private:
     void _refresh_writer(bool is_bbl_machine, const Model &model, const Vec3d &origin);
 
     double    height_first_layer() const { return m_config.option<ConfigOptionFloat>("initial_layer_print_height")->value; };
+    double    height_z_offset() const { return m_config.option<ConfigOptionFloat>("z_offset")->value; };
     double    height_layer() const { return m_config.option<ConfigOptionFloat>("layer_height")->value; };
     const int get_num_patterns() const { return std::ceil((m_params.end - m_params.start) / m_params.step + 1); }
 
@@ -291,8 +302,8 @@ private:
     const Calib_Params &m_params;
 
     GCodeWriter        m_writer;
-    bool               m_is_delta;
     Vec3d              m_starting_point;
+    bool               m_is_start_point_fixed = false;
 
     const double m_handle_xy_size{5};
     const double m_handle_spacing{2};

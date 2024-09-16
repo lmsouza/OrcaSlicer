@@ -186,9 +186,8 @@ struct ExtrusionLine
      * \param A Start point of the 3-point-straight line
      * \param B Intermediate point of the 3-point-straight line
      * \param C End point of the 3-point-straight line
-     * \param weighted_average_width The weighted average of the widths of the two colinear extrusion segments
      * */
-    static int64_t calculateExtrusionAreaDeviationError(ExtrusionJunction A, ExtrusionJunction B, ExtrusionJunction C, coord_t& weighted_average_width);
+    static int64_t calculateExtrusionAreaDeviationError(ExtrusionJunction A, ExtrusionJunction B, ExtrusionJunction C);
 
     bool is_contour() const;
 
@@ -246,6 +245,15 @@ static inline Polygon to_polygon(const ExtrusionLine &line)
     return out;
 }
 
+static Points to_points(const ExtrusionLine &extrusion_line)
+{
+    Points points;
+    points.reserve(extrusion_line.junctions.size());
+    for (const ExtrusionJunction &junction : extrusion_line.junctions)
+        points.emplace_back(junction.p);
+    return points;
+}
+
 #if 0
 static BoundingBox get_extents(const ExtrusionLine &extrusion_line)
 {
@@ -271,15 +279,6 @@ static BoundingBox get_extents(const std::vector<const ExtrusionLine *> &extrusi
         bbox.merge(get_extents(*extrusion_line));
     }
     return bbox;
-}
-
-static Points to_points(const ExtrusionLine &extrusion_line)
-{
-    Points points;
-    points.reserve(extrusion_line.junctions.size());
-    for (const ExtrusionJunction &junction : extrusion_line.junctions)
-        points.emplace_back(junction.p);
-    return points;
 }
 
 static std::vector<Points> to_points(const std::vector<const ExtrusionLine *> &extrusion_lines)

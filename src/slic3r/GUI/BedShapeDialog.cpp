@@ -44,7 +44,8 @@ void BedShape::append_option_line(ConfigOptionsGroupShp optgroup, Parameter para
         def.type = coPoints;
         def.set_default_value(new ConfigOptionPoints{ Vec2d(200, 200) });
         def.min = 0;
-        def.max = 2147;
+        def.max = 214700;
+        def.width   = 7;
         def.label = get_option_label(param);
         def.tooltip = L("Size in X and Y of the rectangular plate.");
         key = "rect_size";
@@ -52,8 +53,9 @@ void BedShape::append_option_line(ConfigOptionsGroupShp optgroup, Parameter para
     case Parameter::RectOrigin:
         def.type = coPoints;
         def.set_default_value(new ConfigOptionPoints{ Vec2d(0, 0) });
-        def.min = -1073.5;
-        def.max = 1073.5;
+        def.min = -107350;
+        def.max = 107350;
+        def.width = 7;
         def.label = get_option_label(param);
         def.tooltip = L("Distance of the 0,0 G-code coordinate from the front left corner of the rectangle.");
         key = "rect_origin";
@@ -132,6 +134,7 @@ void BedShapeDialog::build_dialog(const ConfigOptionPoints& default_pt, const Co
 {
     SetFont(wxGetApp().normal_font());
 
+    SetBackgroundColour(*wxWHITE);
 	m_panel = new BedShapePanel(this);
     m_panel->build_panel(default_pt, custom_texture, custom_model);
 
@@ -246,6 +249,7 @@ void BedShapePanel::build_panel(const ConfigOptionPoints& default_pt, const std:
 ConfigOptionsGroupShp BedShapePanel::init_shape_options_page(const wxString& title)
 {
     wxPanel* panel = new wxPanel(m_shape_options_book);
+    panel->SetBackgroundColour(*wxWHITE);
     ConfigOptionsGroupShp optgroup = std::make_shared<ConfigOptionsGroup>(panel, _L("Settings"));
 
     optgroup->label_width = 10;
@@ -343,6 +347,8 @@ wxPanel* BedShapePanel::init_texture_panel()
 
         remove_btn->Bind(wxEVT_UPDATE_UI, ([this](wxUpdateUIEvent& e) { e.Enable(m_custom_texture != NONE); }));
 
+        parent->SetBackgroundColour(*wxWHITE);
+
         return sizer;
     };
     optgroup->append_line(line);
@@ -430,6 +436,8 @@ wxPanel* BedShapePanel::init_model_panel()
             }));
 
         remove_btn->Bind(wxEVT_UPDATE_UI, ([this](wxUpdateUIEvent& e) { e.Enable(m_custom_model != NONE); }));
+
+        parent->SetBackgroundColour(*wxWHITE);
 
         return sizer;
     };

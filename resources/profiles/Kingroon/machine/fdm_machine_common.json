@@ -1,6 +1,5 @@
 {
   "type": "machine",
-  "bbl_calib_mark_logo": "1",
   "name": "fdm_machine_common",
   "auxiliary_fan": "0",
   "fan_kickstart": "0",
@@ -27,7 +26,7 @@
   "machine_max_acceleration_e": ["5000", "5000"],
   "machine_max_acceleration_extruding": ["1250", "20000"],
   "machine_max_acceleration_retracting": ["1250", "5000"],
-  "machine_max_acceleration_travel": ["9000", "9000"],
+  "machine_max_acceleration_travel": ["20000", "20000"],
   "machine_max_acceleration_x": ["3000", "20000"],
   "machine_max_acceleration_y": ["3000", "20000"],
   "machine_max_acceleration_z": ["200", "200"],

@@ -20,8 +20,8 @@ public:
         multiple_extruders(false), m_extruder(nullptr),
         m_single_extruder_multi_material(false),
         m_last_acceleration(0), m_max_acceleration(0),m_last_travel_acceleration(0), m_max_travel_acceleration(0),
-        m_last_jerk(0), m_max_jerk(0),
-        /*m_last_bed_temperature(0), */m_last_bed_temperature_reached(true),
+        m_last_jerk(0), m_max_jerk_x(0), m_max_jerk_y(0),
+        m_last_bed_temperature(0), m_last_bed_temperature_reached(true),
         m_lifted(0),
         m_to_lift(0),
         m_to_lift_type(LiftType::NormalLift),
@@ -43,11 +43,16 @@ public:
     }
     std::string preamble();
     std::string postamble() const;
+    static std::string set_temperature(unsigned int temperature, GCodeFlavor flavor, bool wait = false, int tool = -1, std::string comment = std::string());
+
     std::string set_temperature(unsigned int temperature, bool wait = false, int tool = -1) const;
     std::string set_bed_temperature(int temperature, bool wait = false);
+    std::string set_chamber_temperature(int temperature, bool wait = false);
     std::string set_print_acceleration(unsigned int acceleration)   { return set_acceleration_internal(Acceleration::Print, acceleration); }
     std::string set_travel_acceleration(unsigned int acceleration)  { return set_acceleration_internal(Acceleration::Travel, acceleration); }
     std::string set_jerk_xy(double jerk);
+    // Orca: set acceleration and jerk in one command for Klipper
+    std::string set_accel_and_jerk(unsigned int acceleration, double jerk);
     std::string set_pressure_advance(double pa) const;
     std::string reset_e(bool force = false);
     std::string update_progress(unsigned int num, unsigned int tot, bool allow_100 = false) const;
@@ -71,13 +76,13 @@ public:
     //BBS: generate G2 or G3 extrude which moves by arc
     std::string extrude_arc_to_xy(const Vec2d &point, const Vec2d &center_offset, double dE, const bool is_ccw, const std::string &comment = std::string(), bool force_no_extrusion = false);
     std::string extrude_to_xyz(const Vec3d &point, double dE, const std::string &comment = std::string(), bool force_no_extrusion = false);
-    std::string retract(bool before_wipe = false);
-    std::string retract_for_toolchange(bool before_wipe = false);
+    std::string retract(bool before_wipe = false, double retract_length = 0);
+    std::string retract_for_toolchange(bool before_wipe = false, double retract_length = 0);
     std::string unretract();
     std::string lift(LiftType lift_type = LiftType::NormalLift, bool spiral_vase = false);
     std::string unlift();
     Vec3d       get_position() const { return m_pos; }
-    void       set_position(const Vec3d& in) { m_pos = in; }
+    void        set_position(const Vec3d& in) { m_pos = in; }
     double      get_zhop() const { return m_lifted; }
 
     //BBS: set offset for gcode writer
@@ -90,6 +95,7 @@ public:
     std::string set_fan(unsigned int speed) const;
     //BBS: set additional fan speed for BBS machine only
     static std::string set_additional_fan(unsigned int speed);
+    static std::string set_exhaust_fan(int speed,bool add_eol);
     //BBS
     void set_object_start_str(std::string start_string) { m_gcode_label_objects_start = start_string; }
     bool is_object_start_str_empty() { return m_gcode_label_objects_start.empty(); }
@@ -104,13 +110,14 @@ public:
     bool is_current_position_clear() const { return m_is_current_pos_clear; };
     //BBS:
     static bool full_gcode_comment;
-    //Radian threshold of slope for lazy lift and spiral lift;
-    static const double slope_threshold;
     //SoftFever
     void set_is_bbl_machine(bool bval) {m_is_bbl_printers = bval;}
     const bool is_bbl_printers() const {return m_is_bbl_printers;}
     void set_is_first_layer(bool bval) { m_is_first_layer = bval; }
+    GCodeFlavor get_gcode_flavor() const { return config.gcode_flavor; }
 
+    // Returns whether this flavor supports separate print and travel acceleration.
+    static bool supports_separate_travel_acceleration(GCodeFlavor flavor);
   private:
 	// Extruders are sorted by their ID, so that binary search is possible.
     std::vector<Extruder> m_extruders;
@@ -123,7 +130,8 @@ public:
     // Limit for setting the acceleration, to respect the machine limits set for the Marlin firmware.
     // If set to zero, the limit is not in action.
     unsigned int    m_max_acceleration;
-    double          m_max_jerk;
+    double          m_max_jerk_x;
+    double          m_max_jerk_y;
     double          m_last_jerk;
     double          m_max_jerk_z;
     double          m_max_jerk_e;

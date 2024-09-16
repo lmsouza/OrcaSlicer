@@ -31,6 +31,7 @@ namespace Slic3r { namespace GUI {
     m_wifi_weak_img     = ScalableBitmap(this, "monitor_signal_weak", 18);
     m_wifi_middle_img   = ScalableBitmap(this, "monitor_signal_middle", 18);
     m_wifi_strong_img   = ScalableBitmap(this, "monitor_signal_strong", 18);
+    m_network_wired_img = ScalableBitmap(this, "monitor_network_wired", 18);
 
     m_intetval_timer = new wxTimer();
     m_intetval_timer->SetOwner(this);
@@ -91,6 +92,18 @@ bool SideToolsPanel::is_in_interval()
 
 void SideToolsPanel::msw_rescale() 
 { 
+    m_printing_img.msw_rescale();
+    m_arrow_img.msw_rescale();
+
+    m_none_printing_img.msw_rescale();
+    m_none_arrow_img.msw_rescale();
+    m_none_add_img.msw_rescale();
+
+    m_wifi_none_img.msw_rescale();
+    m_wifi_weak_img.msw_rescale();
+    m_wifi_middle_img.msw_rescale();
+    m_wifi_strong_img.msw_rescale();
+
     Refresh();
 }
 
@@ -133,8 +146,8 @@ void SideToolsPanel::doRender(wxDC &dc)
     //}
 
     if (m_none_printer) {
-        dc.SetPen(SIDE_TOOLS_BRAND);
-        dc.SetBrush(SIDE_TOOLS_BRAND);
+        dc.SetPen(StateColor::darkModeColorFor(SIDE_TOOLS_BRAND));   // ORCA: Sidebar header background color - Fix for dark mode compability
+        dc.SetBrush(StateColor::darkModeColorFor(SIDE_TOOLS_BRAND)); // ORCA: Sidebar header background color - Fix for dark mode compability
         dc.DrawRectangle(0, 0, size.x, size.y);
 
         dc.DrawBitmap(m_none_printing_img.bmp(), left, (size.y - m_none_printing_img.GetBmpSize().y) / 2);
@@ -204,6 +217,7 @@ void SideToolsPanel::doRender(wxDC &dc)
         if (m_wifi_type == WifiSignal::WEAK) dc.DrawBitmap(m_wifi_weak_img.bmp(), left, (size.y - m_wifi_weak_img.GetBmpSize().y) / 2);
         if (m_wifi_type == WifiSignal::MIDDLE) dc.DrawBitmap(m_wifi_middle_img.bmp(), left, (size.y - m_wifi_middle_img.GetBmpSize().y) / 2);
         if (m_wifi_type == WifiSignal::STRONG) dc.DrawBitmap(m_wifi_strong_img.bmp(), left, (size.y - m_wifi_strong_img.GetBmpSize().y) / 2);
+        if (m_wifi_type == WifiSignal::WIRED)  dc.DrawBitmap(m_network_wired_img.bmp(), left, (size.y - m_network_wired_img.GetBmpSize().y) / 2);
     }
 
     if (m_hover) {
@@ -312,10 +326,9 @@ SideTools::SideTools(wxWindow *parent, wxWindowID id, const wxPoint &pos, const 
     wxBoxSizer* sizer_error_desc = new wxBoxSizer(wxHORIZONTAL);
     wxBoxSizer* sizer_extra_info = new wxBoxSizer(wxHORIZONTAL);
 
-    m_link_network_state = new Label(m_side_error_panel, _L("Check cloud service status"), wxALIGN_CENTER_HORIZONTAL | wxST_ELLIPSIZE_END);
+    m_link_network_state = new wxHyperlinkCtrl(m_side_error_panel, wxID_ANY,_L("Check the status of current system services"),"",wxDefaultPosition,wxDefaultSize,wxALIGN_CENTER_HORIZONTAL | wxST_ELLIPSIZE_END);
     m_link_network_state->SetMinSize(wxSize(FromDIP(220), -1));
     m_link_network_state->SetMaxSize(wxSize(FromDIP(220), -1));
-    m_link_network_state->SetForegroundColour(0x009688);
     m_link_network_state->SetFont(::Label::Body_12);
     m_link_network_state->Bind(wxEVT_LEFT_DOWN, [this](auto& e) {wxGetApp().link_to_network_check(); });
     m_link_network_state->Bind(wxEVT_ENTER_WINDOW, [this](auto& e) {m_link_network_state->SetCursor(wxCURSOR_HAND); });
@@ -452,7 +465,10 @@ void SideTools::update_status(MachineObject* obj)
         m_side_tools->set_current_printer_signal(WifiSignal::NONE);
     }
     else {
-        if (!obj->wifi_signal.empty() && boost::ends_with(obj->wifi_signal, "dBm")) {
+        if (obj->network_wired) {
+            m_side_tools->set_current_printer_signal(WifiSignal::WIRED);
+        }
+        else if (!obj->wifi_signal.empty() && boost::ends_with(obj->wifi_signal, "dBm")) {
             try {
                 wifi_signal_val = std::stoi(obj->wifi_signal.substr(0, obj->wifi_signal.size() - 3));
             }
@@ -488,7 +504,7 @@ void SideTools::show_status(int status)
             m_hyperlink->SetLabel(_L("Failed to connect to the printer"));
             update_connect_err_info(BAMBU_NETWORK_ERR_CONNECTION_TO_PRINTER_FAILED,
                 _L("Connection to printer failed"),
-                _L("Please check the network connection of the printer and Studio."));
+                _L("Please check the network connection of the printer and Orca."));
         }
 
         m_hyperlink->Show();

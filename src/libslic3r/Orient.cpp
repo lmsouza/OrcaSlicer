@@ -3,6 +3,7 @@
 #include <numeric>
 #include <ClipperUtils.hpp>
 #include <boost/geometry/index/rtree.hpp>
+#include <boost/log/trivial.hpp>
 #include <tbb/parallel_for.h>
 
 #if defined(_MSC_VER) && defined(__clang__)
@@ -115,7 +116,7 @@ public:
 
         area_cumulation_accurate(face_normals, normals_quantize, areas, 10);
 
-        area_cumulation_accurate(face_normals_hull, normals_hull_quantize, areas_hull, 10);
+        area_cumulation_accurate(face_normals_hull, normals_hull_quantize, areas_hull, 14);
 
         add_supplements();
 

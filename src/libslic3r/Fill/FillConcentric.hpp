@@ -25,12 +25,7 @@ protected:
 		ExPolygon                      expolygon,
 		ThickPolylines& thick_polylines_out) override;
 
-	bool no_sort() const override { return true; }
-
-	const PrintConfig* print_config = nullptr;
-	const PrintObjectConfig* print_object_config = nullptr;
-
-	friend class Layer;
+    bool no_sort() const override { return true; }
 };
 
 } // namespace Slic3r

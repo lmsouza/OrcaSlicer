@@ -157,7 +157,7 @@ static int run_script(const std::string &script, const std::string &gcode, std::
 {
     // Try to obtain user's default shell
     const char *shell = ::getenv("SHELL");
-    if (shell == nullptr) { shell = "sh"; }
+    if (shell == nullptr) { shell = "/bin/sh"; }
 
     // Quote and escape the gcode path argument
     std::string command { script };
@@ -214,7 +214,7 @@ void gcode_add_line_number(const std::string& path, const DynamicPrintConfig& co
     while (std::getline(fs, gcode_line)) {
         char num_str[128];
         memset(num_str, 0, sizeof(num_str));
-        snprintf(num_str, sizeof(num_str), "%d", line_number);
+        snprintf(num_str, sizeof(num_str), "%zd", line_number);
         new_gcode += std::string("N") + num_str + " " + gcode_line + "\n";
         line_number++;
     }

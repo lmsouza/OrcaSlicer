@@ -12,6 +12,10 @@
 #include "I18N.hpp"
 #include <libnest2d/backends/libslic3r/geometries.hpp>
 
+#include <boost/log/trivial.hpp>
+#include <tbb/blocked_range.h>
+#include <tbb/parallel_for.h>
+
 #define _L(s) Slic3r::I18N::translate(s)
 
 #define USE_PLAN_LAYER_HEIGHTS 1
@@ -478,7 +482,7 @@ static bool move_inside_expolys(const ExPolygons& polygons, Point& from, double 
         // because we compare with vsize2_with_unscale here (no division by zero), we also need to compare by vsize2_with_unscale inside the loop
         // to avoid integer rounding edge cases
         bool projected_p_beyond_prev_segment = dot_with_unscale(p1 - p0, from - p0) >= vsize2_with_unscale(p1 - p0);
-        for(const Point p2 : poly.contour.points)
+        for(const Point& p2 : poly.contour.points)
         {
             // X = A + Normal(B-A) * (((B-A) dot_with_unscale (P-A)) / VSize(B-A));
             //   = A +       (B-A) *  ((B-A) dot_with_unscale (P-A)) / VSize2(B-A);
@@ -879,7 +883,7 @@ void TreeSupport::detect_overhangs(bool detect_first_sharp_tail_only)
 
                 // normal overhang
                 ExPolygons lower_layer_offseted = offset_ex(lower_polys, support_offset_scaled, SUPPORT_SURFACES_OFFSET_PARAMETERS);
-                ExPolygons overhang_areas = std::move(diff_ex(curr_polys, lower_layer_offseted));
+                ExPolygons overhang_areas = diff_ex(curr_polys, lower_layer_offseted);
 
                 overhang_areas.erase(std::remove_if(overhang_areas.begin(), overhang_areas.end(),
                     [extrusion_width_scaled](ExPolygon& area) { return offset_ex(area, -0.1 * extrusion_width_scaled).empty(); }),
@@ -1433,11 +1437,11 @@ void TreeSupport::generate_toolpaths()
 
     if (m_object->support_layer_count() > m_raft_layers) {
         const SupportLayer *ts_layer = m_object->get_support_layer(m_raft_layers);
-        for (const ExPolygon expoly : ts_layer->floor_areas)
+        for (const ExPolygon& expoly : ts_layer->floor_areas)
             raft_areas.push_back(expoly);
-        for (const ExPolygon expoly : ts_layer->roof_areas)
+        for (const ExPolygon& expoly : ts_layer->roof_areas)
             raft_areas.push_back(expoly);
-        for (const ExPolygon expoly : ts_layer->base_areas)
+        for (const ExPolygon& expoly : ts_layer->base_areas)
             raft_areas.push_back(expoly);
     }
 
@@ -2313,7 +2317,7 @@ void TreeSupport::draw_circles(const std::vector<std::vector<Node*>>& contact_no
                         for (size_t i = 0; i <= bottom_gap_layers; i++)
                         {
                             const Layer* below_layer = m_object->get_layer(layer_nr - bottom_interface_layers - i);
-                            ExPolygons bottom_interface = std::move(intersection_ex(base_areas, below_layer->lslices));
+                            ExPolygons bottom_interface = intersection_ex(base_areas, below_layer->lslices);
                             floor_areas.insert(floor_areas.end(), bottom_interface.begin(), bottom_interface.end());
                         }
                     }
@@ -2325,7 +2329,7 @@ void TreeSupport::draw_circles(const std::vector<std::vector<Node*>>& contact_no
                 }
                 if (bottom_gap_layers > 0 && layer_nr > bottom_gap_layers) {
                     const Layer* below_layer = m_object->get_layer(layer_nr - bottom_gap_layers);
-                    ExPolygons bottom_gap_area = std::move(intersection_ex(floor_areas, below_layer->lslices));
+                    ExPolygons bottom_gap_area = intersection_ex(floor_areas, below_layer->lslices);
                     if (!bottom_gap_area.empty()) {
                         floor_areas = std::move(diff_ex(floor_areas, bottom_gap_area));
                     }
@@ -2674,7 +2678,7 @@ void TreeSupport::drop_nodes(std::vector<std::vector<Node*>>& contact_nodes)
 
         m_object->print()->set_status(60, (boost::format(_L("Support: propagate branches at layer %d")) % layer_nr).str());
 
-        Polygons layer_contours = std::move(m_ts_data->get_contours_with_holes(layer_nr));
+        Polygons layer_contours = m_ts_data->get_contours_with_holes(layer_nr);
         //std::unordered_map<Line, bool, LineHash>& mst_line_x_layer_contour_cache = m_mst_line_x_layer_contour_caches[layer_nr];
         std::unordered_map<Line, bool, LineHash> mst_line_x_layer_contour_cache;
         auto is_line_cut_by_contour = [&mst_line_x_layer_contour_cache,&layer_contours](Point a, Point b)
@@ -3357,7 +3361,7 @@ std::vector<LayerHeightData> TreeSupport::plan_layer_heights(std::vector<std::ve
                 break;
             }
         }
-        BOOST_LOG_TRIVIAL(info) << "plan_layer_heights print_z, height, layer_nr->next_layer_nr: " << layer_heights[i].print_z << " " << layer_heights[i].height << "   "
+        BOOST_LOG_TRIVIAL(trace) << "plan_layer_heights print_z, height, layer_nr->next_layer_nr: " << layer_heights[i].print_z << " " << layer_heights[i].height << "   "
             << i << "->" << layer_heights[i].next_layer_nr << std::endl;
     }
 
@@ -3624,7 +3628,7 @@ const ExPolygons& TreeSupportData::get_avoidance(coordf_t radius, size_t layer_n
 Polygons TreeSupportData::get_contours(size_t layer_nr) const
 {
     Polygons contours;
-    for (const ExPolygon expoly : m_layer_outlines[layer_nr]) {
+    for (const ExPolygon& expoly : m_layer_outlines[layer_nr]) {
         contours.push_back(expoly.contour);
     }
 
@@ -3634,7 +3638,7 @@ Polygons TreeSupportData::get_contours(size_t layer_nr) const
 Polygons TreeSupportData::get_contours_with_holes(size_t layer_nr) const
 {
     Polygons contours;
-    for (const ExPolygon expoly : m_layer_outlines[layer_nr]) {
+    for (const ExPolygon& expoly : m_layer_outlines[layer_nr]) {
         for(int i=0;i<expoly.num_contours();i++)
             contours.push_back(expoly.contour_or_hole(i));
     }
@@ -3662,7 +3666,7 @@ const ExPolygons& TreeSupportData::calculate_collision(const RadiusLayerPair& ke
 {
     assert(key.layer_nr < m_layer_outlines.size());
 
-    ExPolygons collision_areas = std::move(offset_ex(m_layer_outlines[key.layer_nr], scale_(key.radius)));
+    ExPolygons collision_areas = offset_ex(m_layer_outlines[key.layer_nr], scale_(key.radius));
     const auto ret = m_collision_cache.insert({ key, std::move(collision_areas) });
     return ret.first->second;
 }
@@ -3694,7 +3698,7 @@ const ExPolygons& TreeSupportData::calculate_avoidance(const RadiusLayerPair& ke
         }
 
         layer_nr_next   = layer_heights[layer_nr].next_layer_nr;
-        ExPolygons        avoidance_areas = std::move(offset_ex(get_avoidance(radius, layer_nr_next, key.recursions+1), scale_(-m_max_move)));
+        ExPolygons        avoidance_areas = offset_ex(get_avoidance(radius, layer_nr_next, key.recursions+1), scale_(-m_max_move));
         const ExPolygons &collision       = get_collision(radius, layer_nr);
         avoidance_areas.insert(avoidance_areas.end(), collision.begin(), collision.end());
         avoidance_areas = std::move(union_ex(avoidance_areas));
@@ -3702,7 +3706,7 @@ const ExPolygons& TreeSupportData::calculate_avoidance(const RadiusLayerPair& ke
         //assert(ret.second);
         return ret.first->second;
     } else {
-        ExPolygons avoidance_areas = std::move(offset_ex(m_layer_outlines_below[layer_nr], scale_(m_xy_distance + radius)));
+        ExPolygons avoidance_areas = offset_ex(m_layer_outlines_below[layer_nr], scale_(m_xy_distance + radius));
         auto ret = m_avoidance_cache.insert({ key, std::move(avoidance_areas) });
         assert(ret.second);
         return ret.first->second;

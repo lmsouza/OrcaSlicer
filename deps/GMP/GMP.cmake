@@ -1,17 +1,16 @@
 
 set(_srcdir ${CMAKE_CURRENT_LIST_DIR}/gmp)
-set(_dstdir ${DESTDIR}/usr/local)
 
 if (MSVC)
-    set(_output  ${_dstdir}/include/gmp.h 
-                 ${_dstdir}/lib/libgmp-10.lib 
-                 ${_dstdir}/bin/libgmp-10.dll)
+    set(_output  ${DESTDIR}/include/gmp.h 
+                 ${DESTDIR}/lib/libgmp-10.lib 
+                 ${DESTDIR}/bin/libgmp-10.dll)
 
     add_custom_command(
         OUTPUT  ${_output}
-        COMMAND ${CMAKE_COMMAND} -E copy ${_srcdir}/include/gmp.h ${_dstdir}/include/
-        COMMAND ${CMAKE_COMMAND} -E copy ${_srcdir}/lib/win${DEPS_BITS}/libgmp-10.lib ${_dstdir}/lib/
-        COMMAND ${CMAKE_COMMAND} -E copy ${_srcdir}/lib/win${DEPS_BITS}/libgmp-10.dll ${_dstdir}/bin/
+        COMMAND ${CMAKE_COMMAND} -E copy ${_srcdir}/include/gmp.h ${DESTDIR}/include/
+        COMMAND ${CMAKE_COMMAND} -E copy ${_srcdir}/lib/win${DEPS_BITS}/libgmp-10.lib ${DESTDIR}/lib/
+        COMMAND ${CMAKE_COMMAND} -E copy ${_srcdir}/lib/win${DEPS_BITS}/libgmp-10.dll ${DESTDIR}/bin/
     )
     
     add_custom_target(dep_GMP SOURCES ${_output})
@@ -57,11 +56,11 @@ else ()
     endif ()
 
     ExternalProject_Add(dep_GMP
-        URL https://gmplib.org/download/gmp/gmp-6.2.1.tar.bz2
+        URL https://github.com/SoftFever/OrcaSlicer_deps/releases/download/gmp-6.2.1/gmp-6.2.1.tar.bz2
         URL_HASH SHA256=eae9326beb4158c386e39a356818031bd28f3124cf915f8c5b1dc4c7a36b4d7c
         DOWNLOAD_DIR ${DEP_DOWNLOAD_DIR}/GMP
         BUILD_IN_SOURCE ON 
-        CONFIGURE_COMMAND  env "CFLAGS=${_gmp_ccflags}" "CXXFLAGS=${_gmp_ccflags}" ./configure ${_cross_compile_arg} --enable-shared=no --enable-cxx=yes --enable-static=yes "--prefix=${DESTDIR}/usr/local" ${_gmp_build_tgt}
+        CONFIGURE_COMMAND  env "CFLAGS=${_gmp_ccflags}" "CXXFLAGS=${_gmp_ccflags}" ./configure ${_cross_compile_arg} --enable-shared=no --enable-cxx=yes --enable-static=yes "--prefix=${DESTDIR}" ${_gmp_build_tgt}
         BUILD_COMMAND     make -j
         INSTALL_COMMAND   make install
     )

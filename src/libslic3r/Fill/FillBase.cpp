@@ -23,6 +23,7 @@
 #include "FillLightning.hpp"
 // BBS: new infill pattern header
 #include "FillConcentricInternal.hpp"
+#include "FillCrossHatch.hpp"
 
 // #define INFILL_DEBUG_OUTPUT
 
@@ -42,6 +43,7 @@ Fill* Fill::new_from_type(const InfillPattern type)
     case ipGyroid:              return new FillGyroid();
     case ipRectilinear:         return new FillRectilinear();
     case ipAlignedRectilinear:  return new FillAlignedRectilinear();
+    case ipCrossHatch:          return new FillCrossHatch();
     case ipMonotonic:           return new FillMonotonic();
     case ipLine:                return new FillLine();
     case ipGrid:                return new FillGrid();
@@ -58,7 +60,8 @@ Fill* Fill::new_from_type(const InfillPattern type)
     // BBS: for internal solid infill only
     case ipConcentricInternal:  return new FillConcentricInternal();
     // BBS: for bottom and top surface only
-    case ipMonotonicLine:       return new FillMonotonicLineWGapFill();
+    // Orca: Replace BBS implementation with Prusa implementation
+    case ipMonotonicLine:       return new FillMonotonicLines();
     default: throw Slic3r::InvalidArgument("unknown type");
     }
 }
@@ -120,57 +123,13 @@ void Fill::fill_surface_extrusion(const Surface* surface, const FillParams& para
 {
     Polylines polylines;
     ThickPolylines thick_polylines;
-    if (!params.with_loop) {
-        try {
-            if (params.use_arachne)
-                thick_polylines = this->fill_surface_arachne(surface, params);
-            else
-                polylines = this->fill_surface(surface, params);
-        }
-        catch (InfillFailedException&) {}
+    try {
+        if (params.use_arachne)
+            thick_polylines = this->fill_surface_arachne(surface, params);
+        else
+            polylines = this->fill_surface(surface, params);
     }
-    //BBS: add handling for infill pattern with loop
-    else {
-        Slic3r::ExPolygons expp = offset_ex(surface->expolygon, float(scale_(this->overlap - 0.5 * this->spacing)));
-        Polylines loop_polylines = to_polylines(expp);
-        {
-            //BBS: clip the loop
-            size_t j = 0;
-            for (size_t i = 0; i < loop_polylines.size(); ++i) {
-                loop_polylines[i].clip_end(this->loop_clipping);
-                if (loop_polylines[i].is_valid()) {
-                    if (j < i)
-                        loop_polylines[j] = std::move(loop_polylines[i]);
-                    ++j;
-                }
-            }
-            if (j < loop_polylines.size())
-                loop_polylines.erase(loop_polylines.begin() + int(j), loop_polylines.end());
-        }
-
-        if (!loop_polylines.empty()) {
-            if (params.use_arachne)
-                append(thick_polylines, to_thick_polylines(std::move(loop_polylines), scaled<coord_t>(this->spacing)));
-            else
-                append(polylines, std::move(loop_polylines));
-            expp = offset_ex(expp, float(scale_(0 - 0.5 * this->spacing)));
-        } else {
-            //BBS: the area is too narrow to place a loop, return to original expolygon
-            expp = { surface->expolygon };
-        }
-
-        Surface temp_surface = *surface;
-        for (ExPolygon& ex : expp) {
-            temp_surface.expolygon = ex;
-            try {
-                if (params.use_arachne)
-                    append(thick_polylines, std::move(this->fill_surface_arachne(&temp_surface, params)));
-                else
-                    append(polylines, std::move(this->fill_surface(&temp_surface, params)));
-            }
-            catch (InfillFailedException&) {}
-        }
-    }
+    catch (InfillFailedException&) {}
 
     if (!polylines.empty() || !thick_polylines.empty()) {
         // calculate actual flow from spacing (which might have been adjusted by the infill
@@ -207,6 +166,66 @@ void Fill::fill_surface_extrusion(const Surface* surface, const FillParams& para
         if (!params.can_reverse) {
             for (size_t i = idx; i < eec->entities.size(); i++)
                 eec->entities[i]->set_reverse();
+        }
+        
+        // Orca: run gap fill
+        this->_create_gap_fill(surface, params, eec);
+    }
+}
+
+// Orca: Dedicated function to calculate gap fill lines for the provided surface, according to the print object parameters
+// and append them to the out ExtrusionEntityCollection.
+void Fill::_create_gap_fill(const Surface* surface, const FillParams& params, ExtrusionEntityCollection* out){
+    
+    //Orca: just to be safe, check against null pointer for the print object config and if NULL return.
+    if (this->print_object_config == nullptr) return;
+    
+    // Orca: Enable gap fill as per the user preference. Return early if gap fill is to not be applied.
+    if ((this->print_object_config->gap_fill_target.value == gftNowhere) ||
+        (surface->surface_type == stInternalSolid && this->print_object_config->gap_fill_target.value != gftEverywhere))
+        return;
+    
+    Flow new_flow = params.flow;
+    ExPolygons unextruded_areas;
+    unextruded_areas = diff_ex(this->no_overlap_expolygons, union_ex(out->polygons_covered_by_spacing(10)));
+    ExPolygons gapfill_areas = union_ex(unextruded_areas);
+    if (!this->no_overlap_expolygons.empty())
+        gapfill_areas = intersection_ex(gapfill_areas, this->no_overlap_expolygons);
+    
+    if (gapfill_areas.size() > 0 && params.density >= 1) {
+        double min = 0.2 * new_flow.scaled_spacing() * (1 - INSET_OVERLAP_TOLERANCE);
+        double max = 2. * new_flow.scaled_spacing();
+        ExPolygons gaps_ex = diff_ex(
+                                     opening_ex(gapfill_areas, float(min / 2.)),
+                                     offset2_ex(gapfill_areas, -float(max / 2.), float(max / 2. + ClipperSafetyOffset)));
+        //BBS: sort the gap_ex to avoid mess travel
+        Points ordering_points;
+        ordering_points.reserve(gaps_ex.size());
+        ExPolygons gaps_ex_sorted;
+        gaps_ex_sorted.reserve(gaps_ex.size());
+        for (const ExPolygon &ex : gaps_ex)
+            ordering_points.push_back(ex.contour.first_point());
+        std::vector<Points::size_type> order2 = chain_points(ordering_points);
+        for (size_t i : order2)
+            gaps_ex_sorted.emplace_back(std::move(gaps_ex[i]));
+        
+        ThickPolylines polylines;
+        for (ExPolygon& ex : gaps_ex_sorted) {
+            //BBS: Use DP simplify to avoid duplicated points and accelerate medial-axis calculation as well.
+            ex.douglas_peucker(SCALED_RESOLUTION * 0.1);
+            ex.medial_axis(min, max, &polylines);
+        }
+        
+        if (!polylines.empty() && !is_bridge(params.extrusion_role)) {
+            polylines.erase(std::remove_if(polylines.begin(), polylines.end(),
+                                           [&](const ThickPolyline& p) {
+                return p.length() < scale_(params.config->filter_out_gap_fill.value);
+            }), polylines.end());
+            
+            ExtrusionEntityCollection gap_fill;
+            variable_width(polylines, erGapFill, params.flow, gap_fill.entities);
+            auto gap = std::move(gap_fill.entities);
+            out->append(gap);
         }
     }
 }

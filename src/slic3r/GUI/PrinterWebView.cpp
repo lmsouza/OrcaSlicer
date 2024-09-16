@@ -40,13 +40,17 @@ PrinterWebView::PrinterWebView(wxWindow *parent)
 
     topsizer->Add(m_browser, wxSizerFlags().Expand().Proportion(1));
 
+    update_mode();
+
     // Log backend information
+    /* m_browser->GetUserAgent() may lead crash
     if (wxGetApp().get_mode() == comDevelop) {
         wxLogMessage(wxWebView::GetBackendVersionInfo().ToString());
         wxLogMessage("Backend: %s Version: %s", m_browser->GetClassInfo()->GetClassName(),
             wxWebView::GetBackendVersionInfo().ToString());
         wxLogMessage("User Agent: %s", m_browser->GetUserAgent());
     }
+    */
 
     //Zoom
     m_zoomFactor = 100;
@@ -78,6 +82,17 @@ void PrinterWebView::load_url(wxString& url, wxString apikey)
     //m_browser->SetFocus();
     UpdateState();
 }
+
+void PrinterWebView::reload()
+{
+    m_browser->Reload();
+}
+
+void PrinterWebView::update_mode()
+{
+    m_browser->EnableAccessToDevTools(wxGetApp().app_config->get_bool("developer_mode"));
+}
+
 /**
  * Method that retrieves the current state from the web control and updates the
  * GUI the reflect this current state.

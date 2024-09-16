@@ -1,12 +1,18 @@
 {
     "type": "filament",
-    "setting_id": "GFSB00",
     "name": "Bambu ABS @BBL X1C",
-    "from": "system",
-    "instantiation": "true",
     "inherits": "Bambu ABS @base",
+    "from": "system",
+    "setting_id": "GFSB00",
+    "instantiation": "true",
+    "fan_max_speed": [
+        "60"
+    ],
     "filament_max_volumetric_speed": [
-        "22"
+        "16"
+    ],
+    "slow_down_layer_time": [
+        "12"
     ],
     "compatible_printers": [
         "Bambu Lab X1 Carbon 0.4 nozzle",
@@ -15,6 +21,5 @@
         "Bambu Lab X1 0.6 nozzle",
         "Bambu Lab P1S 0.4 nozzle",
         "Bambu Lab P1S 0.6 nozzle"
-    ],
-    "version": "01.07.00.18"
+    ]
 }

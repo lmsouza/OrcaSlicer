@@ -2,6 +2,7 @@
 #define slic3r_Layer_hpp_
 
 #include "libslic3r.h"
+#include "BoundingBox.hpp"
 #include "Flow.hpp"
 #include "SurfaceCollection.hpp"
 #include "ExtrusionEntityCollection.hpp"
@@ -182,6 +183,9 @@ public:
     // Phony version of make_fills() without parameters for Perl integration only.
     void                    make_fills() { this->make_fills(nullptr, nullptr); }
     void                    make_fills(FillAdaptive::Octree* adaptive_fill_octree, FillAdaptive::Octree* support_fill_octree, FillLightning::Generator* lightning_generator = nullptr);
+    Polylines               generate_sparse_infill_polylines_for_anchoring(FillAdaptive::Octree *adaptive_fill_octree,
+                                                                           FillAdaptive::Octree *support_fill_octree,
+                                                                           FillLightning::Generator* lightning_generator) const;
     void 					make_ironing();
 
     void                    export_region_slices_to_svg(const char *path) const;
@@ -274,6 +278,7 @@ public:
 
     // for tree supports
     ExPolygons base_areas;
+    ExPolygons                                overhang_areas;
 
 
     // Is there any valid extrusion assigned to this LayerRegion?
@@ -297,7 +302,6 @@ protected:
     size_t m_interface_id;
 
     // for tree support
-    ExPolygons                                overhang_areas;
     ExPolygons                                roof_areas;
     ExPolygons                                roof_1st_layer; // the layer just below roof. When working with PolySupport, this layer should be printed with regular material
     ExPolygons                                floor_areas;
@@ -309,6 +313,7 @@ protected:
         int        type;
         coordf_t   dist_to_top; // mm dist to top
         bool need_infill = false;
+        bool need_extra_wall = false;
         AreaGroup(ExPolygon *a, int t, coordf_t d) : area(a), type(t), dist_to_top(d) {}
     };
     enum OverhangType { Detected = 0, Enforced };

@@ -17,9 +17,14 @@
 
 namespace Slic3r {
 
+class Print;
+
 // slice warnings enum strings
 #define NOZZLE_HRC_CHECKER                                          "the_actual_nozzle_hrc_smaller_than_the_required_nozzle_hrc"
 #define BED_TEMP_TOO_HIGH_THAN_FILAMENT                             "bed_temperature_too_high_than_filament"
+#define NOT_SUPPORT_TRADITIONAL_TIMELAPSE                           "not_support_traditional_timelapse"
+#define NOT_GENERATE_TIMELAPSE                                      "not_generate_timelapse"
+#define LONG_RETRACTION_WHEN_CUT                                    "activate_long_retraction_when_cut"
 
     enum class EMoveType : unsigned char
     {
@@ -70,7 +75,10 @@ namespace Slic3r {
         };
 
         std::vector<double>                                 volumes_per_color_change;
-        std::map<size_t, double>                            volumes_per_extruder;
+        std::map<size_t, double>                            model_volumes_per_extruder;
+        std::map<size_t, double>                            wipe_tower_volumes_per_extruder;
+        std::map<size_t, double>                            support_volumes_per_extruder;
+        std::map<size_t, double>                            total_volumes_per_extruder;
         //BBS: the flush amount of every filament
         std::map<size_t, double>                            flush_per_filament;
         std::map<ExtrusionRole, std::pair<double, double>>  used_filaments_per_role;
@@ -86,7 +94,10 @@ namespace Slic3r {
             }
             volumes_per_color_change.clear();
             volumes_per_color_change.shrink_to_fit();
-            volumes_per_extruder.clear();
+            wipe_tower_volumes_per_extruder.clear();
+            model_volumes_per_extruder.clear();
+            support_volumes_per_extruder.clear();
+            total_volumes_per_extruder.clear();
             flush_per_filament.clear();
             used_filaments_per_role.clear();
             total_filamentchanges = 0;
@@ -107,11 +118,23 @@ namespace Slic3r {
         ConflictResult() = default;
     };
 
+    struct BedMatchResult
+    {
+        bool match;
+        std::string bed_type_name;
+        int extruder_id;
+        BedMatchResult():match(true),bed_type_name(""),extruder_id(-1) {}
+        BedMatchResult(bool _match,const std::string& _bed_type_name="",int _extruder_id=-1)
+            :match(_match),bed_type_name(_bed_type_name),extruder_id(_extruder_id)
+        {}
+    };
+
     using ConflictResultOpt = std::optional<ConflictResult>;
 
     struct GCodeProcessorResult
     {
         ConflictResultOpt conflict_result;
+        BedMatchResult  bed_match_result;
 
         struct SettingsIds
         {
@@ -179,13 +202,19 @@ namespace Slic3r {
         bool toolpath_outside;
         //BBS: add object_label_enabled
         bool label_object_enabled;
+        //BBS : extra retraction when change filament,experiment func
+        bool long_retraction_when_cut {0};
+        int timelapse_warning_code {0};
+        bool support_traditional_timelapse{true};
         float printable_height;
         SettingsIds settings_ids;
         size_t extruders_count;
+        bool backtrace_enabled;
         std::vector<std::string> extruder_colors;
         std::vector<float> filament_diameters;
         std::vector<int>   required_nozzle_HRC;
         std::vector<float> filament_densities;
+        std::vector<float> filament_costs;
         std::vector<int> filament_vitrification_temperature;
         PrintEstimatedStatistics print_statistics;
         std::vector<CustomGCode::Item> custom_gcode_per_print_z;
@@ -212,17 +241,21 @@ namespace Slic3r {
             bed_exclude_area = other.bed_exclude_area;
             toolpath_outside = other.toolpath_outside;
             label_object_enabled = other.label_object_enabled;
+            long_retraction_when_cut = other.long_retraction_when_cut;
+            timelapse_warning_code = other.timelapse_warning_code;
             printable_height = other.printable_height;
             settings_ids = other.settings_ids;
             extruders_count = other.extruders_count;
             extruder_colors = other.extruder_colors;
             filament_diameters = other.filament_diameters;
             filament_densities = other.filament_densities;
+            filament_costs = other.filament_costs;
             print_statistics = other.print_statistics;
             custom_gcode_per_print_z = other.custom_gcode_per_print_z;
             spiral_vase_layers = other.spiral_vase_layers;
             warnings = other.warnings;
             bed_type = other.bed_type;
+            bed_match_result = other.bed_match_result;
 #if ENABLE_GCODE_VIEWER_STATISTICS
             time = other.time;
 #endif
@@ -239,7 +272,6 @@ namespace Slic3r {
         static const std::vector<std::string> Reserved_Tags_compatible;
         static const std::string Flush_Start_Tag;
         static const std::string Flush_End_Tag;
-        static const std::map<NozzleType, int>Nozzle_Type_To_HRC;
     public:
         enum class ETags : unsigned char
         {
@@ -255,7 +287,12 @@ namespace Slic3r {
             First_Line_M73_Placeholder,
             Last_Line_M73_Placeholder,
             Estimated_Printing_Time_Placeholder,
-            Total_Layer_Number_Placeholder
+            Total_Layer_Number_Placeholder,
+            Manual_Tool_Change,
+            During_Print_Exhaust_Fan,
+            Wipe_Tower_Start,
+            Wipe_Tower_End,
+            PA_Change,
         };
 
         static const std::string& reserved_tag(ETags tag) { return s_IsBBLPrinter ? Reserved_Tags[static_cast<unsigned char>(tag)] : Reserved_Tags_compatible[static_cast<unsigned char>(tag)]; }
@@ -266,7 +303,7 @@ namespace Slic3r {
         static bool contains_reserved_tags(const std::string& gcode, unsigned int max_count, std::vector<std::string>& found_tag);
 
         static int get_gcode_last_filament(const std::string &gcode_str);
-        static bool get_last_z_from_gcode(const std::string& gcode_str, double& z);
+        static bool get_last_pos_from_gcode(const std::string& gcode_str, int axis, double& pos);
 
         static const float Wipe_Width;
         static const float Wipe_Height;
@@ -342,6 +379,7 @@ namespace Slic3r {
             EMoveType move_type{ EMoveType::Noop };
             ExtrusionRole role{ erNone };
             unsigned int g1_line_id{ 0 };
+            unsigned int remaining_internal_g1_lines;
             unsigned int layer_id{ 0 };
             float distance{ 0.0f }; // mm
             float acceleration{ 0.0f }; // mm/s^2
@@ -356,6 +394,7 @@ namespace Slic3r {
 
             float time() const;
         };
+
 
     private:
         struct TimeMachine
@@ -389,6 +428,7 @@ namespace Slic3r {
             struct G1LinesCacheItem
             {
                 unsigned int id;
+                unsigned int remaining_internal_g1_lines;
                 float elapsed_time;
             };
 
@@ -452,6 +492,10 @@ namespace Slic3r {
             // Additional load / unload times for a filament exchange sequence.
             float filament_load_times;
             float filament_unload_times;
+            //Orca:  time for tool change
+            float machine_tool_change_time;
+            bool  disable_m73;
+
             std::array<TimeMachine, static_cast<size_t>(PrintEstimatedStatistics::ETimeMode::Count)> machines;
 
             void reset();
@@ -466,21 +510,36 @@ namespace Slic3r {
             double color_change_cache;
             std::vector<double> volumes_per_color_change;
 
-            double tool_change_cache;
-            std::map<size_t, double> volumes_per_extruder;
+            double model_extrude_cache;
+            std::map<size_t, double> model_volumes_per_extruder;
+
+            double wipe_tower_cache;
+            std::map<size_t, double>wipe_tower_volumes_per_extruder;
+
+            double support_volume_cache;
+            std::map<size_t, double>support_volumes_per_extruder;
 
             //BBS: the flush amount of every filament
             std::map<size_t, double> flush_per_filament;
+
+            double total_volume_cache;
+            std::map<size_t, double>total_volumes_per_extruder;
 
             double role_cache;
             std::map<ExtrusionRole, std::pair<double, double>> filaments_per_role;
 
             void reset();
 
-            void increase_caches(double extruded_volume);
+            void increase_support_caches(double extruded_volume);
+            void increase_model_caches(double extruded_volume);
+            void increase_wipe_tower_caches(double extruded_volume);
 
             void process_color_change_cache();
-            void process_extruder_cache(GCodeProcessor* processor);
+            void process_model_cache(GCodeProcessor* processor);
+            void process_wipe_tower_cache(GCodeProcessor* processor);
+            void process_support_cache(GCodeProcessor* processor);
+            void process_total_volume_cache(GCodeProcessor* processor);
+
             void update_flush_per_filament(size_t extrude_id, float flush_length);
             void process_role_cache(GCodeProcessor* processor);
             void process_caches(GCodeProcessor* processor);
@@ -617,7 +676,6 @@ namespace Slic3r {
 
     private:
         GCodeReader m_parser;
-
         EUnits m_units;
         EPositioningType m_global_positioning_type;
         EPositioningType m_e_local_positioning_type;
@@ -630,7 +688,9 @@ namespace Slic3r {
         CachedPosition m_cached_position;
         bool m_wiping;
         bool m_flushing;
+        bool m_wipe_tower;
         float m_remaining_volume;
+        bool m_manual_filament_change;
 
         //BBS: x, y offset for gcode generated
         double          m_x_offset{ 0 };
@@ -649,11 +709,15 @@ namespace Slic3r {
         float m_forced_height; // mm
         float m_mm3_per_mm;
         float m_fan_speed; // percentage
+        float m_z_offset; // mm
         ExtrusionRole m_extrusion_role;
         unsigned char m_extruder_id;
         unsigned char m_last_extruder_id;
         ExtruderColors m_extruder_colors;
         ExtruderTemps m_extruder_temps;
+        ExtruderTemps m_extruder_temps_config;
+        ExtruderTemps m_extruder_temps_first_layer_config;
+        bool  m_is_XL_printer = false;
         int m_highest_bed_temp;
         float m_extruded_last_z;
         float m_first_layer_height; // mm
@@ -665,7 +729,11 @@ namespace Slic3r {
         SeamsDetector m_seams_detector;
         OptionsZCorrector m_options_z_corrector;
         size_t m_last_default_color_id;
-        bool m_spiral_vase_active;
+        bool m_detect_layer_based_on_tag {false};
+        int m_seams_count;
+        bool m_single_extruder_multi_material;
+        float m_preheat_time;
+        int m_preheat_steps;
 #if ENABLE_GCODE_VIEWER_STATISTICS
         std::chrono::time_point<std::chrono::high_resolution_clock> m_start_time;
 #endif // ENABLE_GCODE_VIEWER_STATISTICS
@@ -690,6 +758,8 @@ namespace Slic3r {
         TimeProcessor m_time_processor;
         UsedFilaments m_used_filaments;
 
+        Print* m_print{ nullptr };
+
         GCodeProcessorResult m_result;
         static unsigned int s_result_id;
 
@@ -703,6 +773,7 @@ namespace Slic3r {
         GCodeProcessor();
 
         void apply_config(const PrintConfig& config);
+        void set_print(Print* print) { m_print = print; }
         void enable_stealth_time_estimator(bool enabled);
         bool is_stealth_time_estimator_enabled() const {
             return m_time_processor.machines[static_cast<size_t>(PrintEstimatedStatistics::ETimeMode::Stealth)].enabled;
@@ -711,6 +782,7 @@ namespace Slic3r {
         void reset();
 
         const GCodeProcessorResult& get_result() const { return m_result; }
+        GCodeProcessorResult& result() { return m_result; }
         GCodeProcessorResult&& extract_result() { return std::move(m_result); }
 
         // Load a G-code into a stand-alone G-code viewer.
@@ -734,6 +806,10 @@ namespace Slic3r {
         //BBS: set offset for gcode writer
         void set_xy_offset(double x, double y) { m_x_offset = x; m_y_offset = y; }
 
+        // Orca: if true, only change new layer if ETags::Layer_Change occurs
+        // otherwise when we got a lift of z during extrusion, a new layer will be added
+        void detect_layer_based_on_tag(bool enabled) { m_detect_layer_based_on_tag = enabled; }
+
     private:
         void apply_config(const DynamicPrintConfig& config);
         void apply_config_simplify3d(const std::string& filename);
@@ -754,7 +830,7 @@ namespace Slic3r {
 
         // Move
         void process_G0(const GCodeReader::GCodeLine& line);
-        void process_G1(const GCodeReader::GCodeLine& line);
+        void process_G1(const GCodeReader::GCodeLine& line, const std::optional<unsigned int>& remaining_internal_g1_lines = std::nullopt);
         void process_G2_G3(const GCodeReader::GCodeLine& line);
 
         // BBS: handle delay command
@@ -829,6 +905,9 @@ namespace Slic3r {
         //BBS: wait bed temperature
         void process_M190(const GCodeReader::GCodeLine& line);
 
+        //BBS: wait chamber temperature
+        void process_M191(const GCodeReader::GCodeLine& line);
+
         // Set max printing acceleration
         void process_M201(const GCodeReader::GCodeLine& line);
 
@@ -866,6 +945,11 @@ namespace Slic3r {
         void process_T(const GCodeReader::GCodeLine& line);
         void process_T(const std::string_view command);
 
+        // post process the file with the given filename to:
+        // 1) add remaining time lines M73 and update moves' gcode ids accordingly
+        // 2) update used filament data
+        void run_post_process();
+
         //BBS: different path_type is only used for arc move
         void store_move_vertex(EMoveType type, EMovePathType path_type = EMovePathType::Noop_move);
 
@@ -879,7 +963,7 @@ namespace Slic3r {
         Vec3f get_xyz_max_jerk(PrintEstimatedStatistics::ETimeMode mode) const;
         float get_retract_acceleration(PrintEstimatedStatistics::ETimeMode mode) const;
         void  set_retract_acceleration(PrintEstimatedStatistics::ETimeMode mode, float value);
-        float get_acceleration(PrintEstimatedStatistics::ETimeMode mode) const;
+    float get_acceleration(PrintEstimatedStatistics::ETimeMode mode) const;
         void  set_acceleration(PrintEstimatedStatistics::ETimeMode mode, float value);
         float get_travel_acceleration(PrintEstimatedStatistics::ETimeMode mode) const;
         void  set_travel_acceleration(PrintEstimatedStatistics::ETimeMode mode, float value);
@@ -900,5 +984,3 @@ namespace Slic3r {
 } /* namespace Slic3r */
 
 #endif /* slic3r_GCodeProcessor_hpp_ */
-
-
